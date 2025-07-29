@@ -1,0 +1,133 @@
+openapi: 3.0.1
+info:
+  title: ToDo API
+  version: 1.0.0
+  description: API for managing tasks with Cognito authentication
+
+servers:
+  - url: https://{apiId}.execute-api.{region}.amazonaws.com/Dev
+    variables:
+      apiId:
+        default: your-api-id
+      region:
+        default: ap-south-2
+
+components:
+  securitySchemes:
+    CognitoAuthorizer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token # for Cognito Authentication
+
+security:
+  - CognitoAuthorizer: []
+
+paths:
+  /auth/signup:
+    post:
+      summary: User signup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Signup successful
+
+  /auth/login:
+    post:
+      summary: User login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+
+  /tasks:
+    get:
+      summary: Get all tasks
+      responses:
+        '200':
+          description: List of tasks
+    post:
+      summary: Create a new task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Task created
+
+  /tasks/{taskId}:
+    put:
+      summary: Update a task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Task updated
+
+    delete:
+      summary: Delete a task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Task deleted
+
+  /tasks/{taskId}/toggle:
+    patch:
+      summary: Toggle task completion
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task toggled
