@@ -48,3 +48,7 @@ __snapshots__/
 # Optional: ignore local DynamoDB or mock data
 local-dynamodb/
 mock-data/
+
+# Local testing and mock data
+events/
+__test__/
