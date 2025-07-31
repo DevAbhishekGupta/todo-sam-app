@@ -3,7 +3,7 @@ import {
   InitiateAuthCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 
-const FUNCTION_NAME = "LoginFunction";
+const FUNCTION_NAME = "AuthLoginFunction";
 const logger = {
   info: (...args) => console.log(`[INFO] [${FUNCTION_NAME}]`, ...args),
   error: (...args) => console.error(`[ERROR] [${FUNCTION_NAME}]`, ...args),

@@ -1,108 +1,57 @@
-AWSTemplateFormatVersion: 2010-09-09
-Description: ToDoSamApp
-
-Transform:
-  - AWS::Serverless-2016-10-31
-
-Parameters:
-  StageName:
-    Type: String
-    Default: Dev
-    Description: Deployment stage name (e.g., Dev, Test, Prod)
-
-Metadata:
-  AWS::ServerlessRepo::Application:
-    Name: ToDoSamApp
-    Description: Serverless To-Do app with Cognito authentication and DynamoDB backend
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless To-Do App using AWS SAM
 
 Globals:
+  Function:
+    Timeout: 10
+    Runtime: nodejs22.x
+    MemorySize: 128
+    CodeUri: src/
+    Environment:
+      Variables:
+        STAGE: !Ref StageName
+        TABLE_NAME: ToDoTasks
+    LoggingConfig:
+      LogFormat: JSON
+    Tags:
+      - Key: Project
+        Value: ToDoApp
+      - Key: Owner
+        Value: Abhishek
+      - Key: Environment
+        Value: !Ref StageName
+
   Api:
     Cors:
       AllowMethods: "'OPTIONS','GET','POST','PUT','DELETE','PATCH'"
       AllowHeaders: "'Content-Type','Authorization'"
       AllowOrigin: "'*'"
-    Auth:
-      DefaultAuthorizer: CognitoAuthorizer
-      AddDefaultAuthorizerToCorsPreflight: false
-      Authorizers:
-        CognitoAuthorizer:
-          UserPoolArn: !GetAtt UserPool.Arn
-  Function:
-    CodeUri: src/
-    Timeout: 10
-    Runtime: nodejs18.x
-    MemorySize: 128
-    Environment:
-      Variables:
-        TABLE_NAME: ToDoTasks
-        USER_POOL_CLIENT_ID: !Ref UserPoolClient
-        USER_POOL_ID: !Ref UserPool
-    LoggingConfig:
-      LogFormat: JSON
-    Tags:
-      Project: ToDoApp
-      Owner: Abhishek
-      Environment: !Ref StageName
+
+Parameters:
+  StageName:
+    Type: String
+    Default: dev
+    Description: Deployment stage (e.g., dev, prod)
 
 Resources:
 
-  ### 🔐 Auth Resources ###
-  AuthSignupFunction:
-    Type: AWS::Serverless::Function
+  ToDoHttpApi:
+    Type: AWS::Serverless::HttpApi
     Properties:
-      Description: Handle user signup via Cognito
-      Handler: handlers/signup.handler
-      Policies:
-        - Statement:
-            - Effect: Allow
-              Action:
-                - cognito-idp:AdminCreateUser
-                - cognito-idp:AdminInitiateAuth
-                - cognito-idp:ListUsers
-                - cognito-idp:ForgotPassword
-                - cognito-idp:ConfirmForgotPassword
-                - cognito-idp:RespondToAuthChallenge
-                - cognito-idp:InitiateAuth
-                - cognito-idp:RevokeToken
-              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}"
-      Events:
-        SignupAPI:
-          Type: Api
-          Properties:
-            Path: /auth/signup
-            Method: post
-            RestApiId: !Ref ServerlessRestApi
-            Auth:
-              Authorizer: NONE
-
-  AuthLoginFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Description: Handle user login via Cognito
-      Handler: handlers/login.handler
-      Policies:
-        - Statement:
-            - Effect: Allow
-              Action:
-                - cognito-idp:AdminCreateUser
-                - cognito-idp:AdminInitiateAuth
-                - cognito-idp:ListUsers
-                - cognito-idp:ForgotPassword
-                - cognito-idp:ConfirmForgotPassword
-                - cognito-idp:RespondToAuthChallenge
-                - cognito-idp:GlobalSignOut
-                - cognito-idp:InitiateAuth
-                - cognito-idp:RevokeToken
-              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}"
-      Events:
-        LoginAPI:
-          Type: Api
-          Properties:
-            Path: /auth/login
-            Method: post
-            RestApiId: !Ref ServerlessRestApi
-            Auth:
-              Authorizer: NONE
+      Name: !Sub "ToDoHttpApi-${StageName}"
+      Tags:
+        Project: ToDoApp
+        Owner: Abhishek
+        Environment: !Ref StageName
+      Auth:
+        Authorizers:
+          CognitoAuthorizer:
+            IdentitySource: "$request.header.Authorization"
+            JwtConfiguration:
+              issuer: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}"
+              audience:
+                - !Ref UserPoolClient
 
   UserPool:
     Type: AWS::Cognito::UserPool
@@ -138,94 +87,251 @@ Resources:
         - ADMIN_NO_SRP_AUTH
         - USER_PASSWORD_AUTH
 
-  ### 📋 Task Resources ###
+  AuthSignupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/signup.handler
+      Tags:
+        Project: ToDoApp
+        Owner: Abhishek
+        Environment: !Ref StageName
+      Environment:
+        Variables:
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminCreateUser
+                - cognito-idp:AdminInitiateAuth
+                - cognito-idp:RespondToAuthChallenge
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}"
+      Events:
+        SignupAPI:
+          Type: HttpApi
+          Properties:
+            Path: /auth/signup
+            Method: post
+            ApiId: !Ref ToDoHttpApi
+
+  AuthLoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/login.handler
+      Tags:
+        Project: ToDoApp
+        Owner: Abhishek
+        Environment: !Ref StageName
+      Environment:
+        Variables:
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminInitiateAuth
+                - cognito-idp:RespondToAuthChallenge
+                - cognito-idp:GlobalSignOut
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}"
+      Events:
+        LoginAPI:
+          Type: HttpApi
+          Properties:
+            Path: /auth/login
+            Method: post
+            ApiId: !Ref ToDoHttpApi
+  
+  AuthConfirmFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/confirmSignup.handler
+      Runtime: nodejs22.x
+      MemorySize: 128
+      Timeout: 10
+      CodeUri: src/
+      Tags:
+        Project: ToDoApp
+        Owner: Abhishek
+        Environment: !Ref StageName
+      Environment:
+        Variables:
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:ConfirmSignUp
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}"
+      Events:
+        ConfirmAPI:
+          Type: HttpApi
+          Properties:
+            Path: /auth/confirm
+            Method: post
+            ApiId: !Ref ToDoHttpApi
+
+  AuthForgotPasswordFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/forgotPassword.handler
+      Runtime: nodejs22.x
+      MemorySize: 128
+      Timeout: 10
+      CodeUri: src/
+      Tags:
+        Project: ToDoApp
+        Owner: Abhishek
+        Environment: !Ref StageName
+      Environment:
+        Variables:
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+          STAGE: !Ref StageName
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:ForgotPassword
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}"
+      Events:
+        ForgotPasswordAPI:
+          Type: HttpApi
+          Properties:
+            Path: /auth/forgot
+            Method: post
+            ApiId: !Ref ToDoHttpApi
+
+  AuthResetPasswordFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/resetPassword.handler
+      Runtime: nodejs22.x
+      MemorySize: 128
+      Timeout: 10
+      CodeUri: src/
+      Tags:
+        Project: ToDoApp
+        Owner: Abhishek
+        Environment: !Ref StageName
+      Environment:
+        Variables:
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+          STAGE: !Ref StageName
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:ConfirmForgotPassword
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}"
+      Events:
+        ResetPasswordAPI:
+          Type: HttpApi
+          Properties:
+            Path: /auth/reset
+            Method: post
+            ApiId: !Ref ToDoHttpApi
+
   CreateTaskFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Description: Create a new task
       Handler: handlers/createTask.handler
+      Tags:
+        Project: ToDoApp
+        Owner: Abhishek
+        Environment: !Ref StageName
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref ToDoTasksTable
+            TableName: ToDoTasks
       Events:
         CreateTaskAPI:
-          Type: Api
+          Type: HttpApi
           Properties:
             Path: /tasks
             Method: post
-            RestApiId: !Ref ServerlessRestApi
+            ApiId: !Ref ToDoHttpApi
             Auth:
               Authorizer: CognitoAuthorizer
 
   GetTasksFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Description: Get all tasks for the user
       Handler: handlers/getTasks.handler
+      Tags:
+        Project: ToDoApp
+        Owner: Abhishek
+        Environment: !Ref StageName
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref ToDoTasksTable
+            TableName: ToDoTasks
       Events:
         GetTasksAPI:
-          Type: Api
+          Type: HttpApi
           Properties:
             Path: /tasks
             Method: get
-            RestApiId: !Ref ServerlessRestApi
-            Auth:
-              Authorizer: CognitoAuthorizer
-
-  DeleteTaskFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Description: Delete a task by ID
-      Handler: handlers/deleteTask.handler
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref ToDoTasksTable
-      Events:
-        DeleteTaskAPI:
-          Type: Api
-          Properties:
-            Path: /tasks/{taskId}
-            Method: delete
-            RestApiId: !Ref ServerlessRestApi
+            ApiId: !Ref ToDoHttpApi
             Auth:
               Authorizer: CognitoAuthorizer
 
   UpdateTaskFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Description: Update a task by ID
       Handler: handlers/updateTask.handler
+      Tags:
+        Project: ToDoApp
+        Owner: Abhishek
+        Environment: !Ref StageName
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref ToDoTasksTable
+            TableName: ToDoTasks
       Events:
         UpdateTaskAPI:
-          Type: Api
+          Type: HttpApi
           Properties:
             Path: /tasks/{taskId}
             Method: put
-            RestApiId: !Ref ServerlessRestApi
+            ApiId: !Ref ToDoHttpApi
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  DeleteTaskFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/deleteTask.handler
+      Tags:
+        Project: ToDoApp
+        Owner: Abhishek
+        Environment: !Ref StageName
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: ToDoTasks
+      Events:
+        DeleteTaskAPI:
+          Type: HttpApi
+          Properties:
+            Path: /tasks/{taskId}
+            Method: delete
+            ApiId: !Ref ToDoHttpApi
             Auth:
               Authorizer: CognitoAuthorizer
 
   CompleteTaskFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Description: Toggle task completion status
       Handler: handlers/completeTask.handler
+      Tags:
+        Project: ToDoApp
+        Owner: Abhishek
+        Environment: !Ref StageName
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref ToDoTasksTable
+            TableName: ToDoTasks
       Events:
         CompleteTaskAPI:
-          Type: Api
+          Type: HttpApi
           Properties:
             Path: /tasks/{taskId}/toggle
             Method: patch
-            RestApiId: !Ref ServerlessRestApi
+            ApiId: !Ref ToDoHttpApi
             Auth:
               Authorizer: CognitoAuthorizer
 
@@ -235,6 +341,7 @@ Resources:
     UpdateReplacePolicy: Retain
     Properties:
       TableName: ToDoTasks
+      BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: userId
           AttributeType: S
@@ -245,7 +352,6 @@ Resources:
           KeyType: HASH
         - AttributeName: taskId
           KeyType: RANGE
-      BillingMode: PAY_PER_REQUEST
       Tags:
         - Key: Project
           Value: ToDoApp
@@ -254,33 +360,34 @@ Resources:
         - Key: Environment
           Value: !Ref StageName
 
-  ### 🌐 API Gateway ###
-  ServerlessRestApi:
-    Type: AWS::Serverless::Api
-    Properties:
-      Name: ToDoApi
-      StageName: !Ref StageName
-      Tags:
-        Project: ToDoApp
-        Owner: Abhishek
-        Environment: !Ref StageName
-
 Outputs:
+
   WebEndpoint:
-    Description: "API Gateway endpoint URL"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/"
+    Description: "HTTP API endpoint URL"
+    Value: !Sub "https://${ToDoHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+    Export:
+      Name: !Sub "${AWS::StackName}-WebEndpoint"
+
+  TasksTableName:
+    Description: "DynamoDB Table Name"
+    Value: ToDoTasks
+    Export:
+      Name: !Sub "${AWS::StackName}-TasksTableName"
+
+  StageOutput:
+    Description: "Deployment Stage"
+    Value: !Ref StageName
+    Export:
+      Name: !Sub "${AWS::StackName}-Stage"
+
   UserPoolId:
     Description: Cognito User Pool ID
     Value: !Ref UserPool
     Export:
       Name: !Sub "${AWS::StackName}-UserPoolId"
+
   UserPoolClientId:
     Description: Cognito User Pool Client ID
     Value: !Ref UserPoolClient
     Export:
       Name: !Sub "${AWS::StackName}-UserPoolClientId"
-  ToDoTasksTableName:
-    Description: DynamoDB table name for tasks
-    Value: !Ref ToDoTasksTable
-    Export:
-      Name: !Sub "${AWS::StackName}-ToDoTasksTableName"

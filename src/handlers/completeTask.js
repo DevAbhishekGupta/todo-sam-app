@@ -25,9 +25,10 @@ export const handler = async (event) => {
   logger.info("Received event", { requestId });
 
   const taskId = event?.pathParameters?.taskId;
+  const claims = event?.requestContext?.authorizer?.jwt?.claims || event?.requestContext?.authorizer?.claims;
   const userId = process.env.AWS_SAM_LOCAL
     ? "mock-user-1234"
-    : event?.requestContext?.authorizer?.claims?.sub;
+    : claims?.sub;
 
   if (!taskId || typeof taskId !== "string" || !userId || typeof userId !== "string") {
     logger.error("Missing or invalid userId/taskId", { userId, taskId, requestId });

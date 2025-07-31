@@ -1,6 +1,6 @@
 import { CognitoIdentityProviderClient, SignUpCommand } from "@aws-sdk/client-cognito-identity-provider";
 
-const FUNCTION_NAME = "SignupFunction";
+const FUNCTION_NAME = "AuthSignupFunction";
 const logger = {
   info: (...args) => console.log(`[INFO] [${FUNCTION_NAME}]`, ...args),
   error: (...args) => console.error(`[ERROR] [${FUNCTION_NAME}]`, ...args),
@@ -16,7 +16,7 @@ export const handler = async (event) => {
   try {
     body = JSON.parse(event.body);
   } catch (err) {
-    logger.error("Invalid JSON in request body", { requestId });
+    logger.error("Invalid JSON in request body", { error: err.message, requestId });
     return {
       statusCode: 400,
       body: JSON.stringify({ error: "Invalid request body" }),

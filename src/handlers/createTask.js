@@ -40,9 +40,10 @@ export const handler = async (event) => {
   }
 
   const { title, description, category } = body;
+  const claims = event?.requestContext?.authorizer?.jwt?.claims || event?.requestContext?.authorizer?.claims;
   const userId = process.env.AWS_SAM_LOCAL
     ? "mock-user-1234"
-    : event?.requestContext?.authorizer?.claims?.sub;
+    : claims?.sub;
 
   if (!userId || typeof title !== "string" || title.trim().length === 0) {
     logger.error("Missing or invalid fields", { title, userId, requestId });
