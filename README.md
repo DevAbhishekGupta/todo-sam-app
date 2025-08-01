@@ -19,34 +19,22 @@ A fully serverless To-Do application built with AWS SAM, Cognito authentication,
 
 ```mermaid
 flowchart TD
-    %% Client
     A[Frontend / Client App]
-
-    %% API Gateway
     B[API Gateway (HTTP API)]
-
-    %% Cognito
     F[Cognito User Pool]
     G[Cognito User Pool Client]
-
-    %% Lambda Auth
     C1[Signup Lambda]
     C2[Login Lambda]
     C3[Confirm Signup Lambda]
     C4[Forgot Password Lambda]
     C5[Reset Password Lambda]
-
-    %% Lambda Tasks
     D1[Create Task Lambda]
     D2[Get Tasks Lambda]
     D3[Update Task Lambda]
     D4[Delete Task Lambda]
     D5[Complete Task Lambda]
-
-    %% DynamoDB
     E[ToDoTasks Table]
 
-    %% Connections
     A -->|HTTP Request| B
     B -->|/auth/signup| C1
     B -->|/auth/login| C2
