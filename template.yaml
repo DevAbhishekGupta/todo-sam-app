@@ -24,9 +24,9 @@ Globals:
 
   Api:
     Cors:
-      AllowMethods: "'OPTIONS','GET','POST','PUT','DELETE','PATCH'"
-      AllowHeaders: "'Content-Type','Authorization'"
-      AllowOrigin: "'*'"
+      AllowMethods: '''OPTIONS'',''GET'',''POST'',''PUT'',''DELETE'',''PATCH'''
+      AllowHeaders: '''Content-Type'',''Authorization'''
+      AllowOrigin: '''*'''
 
 Parameters:
   StageName:
@@ -39,7 +39,7 @@ Resources:
   ToDoHttpApi:
     Type: AWS::Serverless::HttpApi
     Properties:
-      Name: !Sub "ToDoHttpApi-${StageName}"
+      Name: !Sub ToDoHttpApi-${StageName}
       Tags:
         Project: ToDoApp
         Owner: Abhishek
@@ -47,9 +47,9 @@ Resources:
       Auth:
         Authorizers:
           CognitoAuthorizer:
-            IdentitySource: "$request.header.Authorization"
+            IdentitySource: $request.header.Authorization
             JwtConfiguration:
-              issuer: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}"
+              issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}
               audience:
                 - !Ref UserPoolClient
 
@@ -105,7 +105,7 @@ Resources:
                 - cognito-idp:AdminCreateUser
                 - cognito-idp:AdminInitiateAuth
                 - cognito-idp:RespondToAuthChallenge
-              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}"
+              Resource: !Sub arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}
       Events:
         SignupAPI:
           Type: HttpApi
@@ -132,7 +132,7 @@ Resources:
                 - cognito-idp:AdminInitiateAuth
                 - cognito-idp:RespondToAuthChallenge
                 - cognito-idp:GlobalSignOut
-              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}"
+              Resource: !Sub arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}
       Events:
         LoginAPI:
           Type: HttpApi
@@ -140,7 +140,7 @@ Resources:
             Path: /auth/login
             Method: post
             ApiId: !Ref ToDoHttpApi
-  
+
   AuthConfirmFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -161,7 +161,7 @@ Resources:
             - Effect: Allow
               Action:
                 - cognito-idp:ConfirmSignUp
-              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}"
+              Resource: !Sub arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}
       Events:
         ConfirmAPI:
           Type: HttpApi
@@ -191,7 +191,7 @@ Resources:
             - Effect: Allow
               Action:
                 - cognito-idp:ForgotPassword
-              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}"
+              Resource: !Sub arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}
       Events:
         ForgotPasswordAPI:
           Type: HttpApi
@@ -221,7 +221,7 @@ Resources:
             - Effect: Allow
               Action:
                 - cognito-idp:ConfirmForgotPassword
-              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}"
+              Resource: !Sub arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}
       Events:
         ResetPasswordAPI:
           Type: HttpApi
@@ -363,31 +363,31 @@ Resources:
 Outputs:
 
   WebEndpoint:
-    Description: "HTTP API endpoint URL"
-    Value: !Sub "https://${ToDoHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+    Description: HTTP API endpoint URL
+    Value: !Sub https://${ToDoHttpApi}.execute-api.${AWS::Region}.amazonaws.com
     Export:
-      Name: !Sub "${AWS::StackName}-WebEndpoint"
+      Name: !Sub ${AWS::StackName}-WebEndpoint
 
   TasksTableName:
-    Description: "DynamoDB Table Name"
+    Description: DynamoDB Table Name
     Value: ToDoTasks
     Export:
-      Name: !Sub "${AWS::StackName}-TasksTableName"
+      Name: !Sub ${AWS::StackName}-TasksTableName
 
   StageOutput:
-    Description: "Deployment Stage"
+    Description: Deployment Stage
     Value: !Ref StageName
     Export:
-      Name: !Sub "${AWS::StackName}-Stage"
+      Name: !Sub ${AWS::StackName}-Stage
 
   UserPoolId:
     Description: Cognito User Pool ID
     Value: !Ref UserPool
     Export:
-      Name: !Sub "${AWS::StackName}-UserPoolId"
+      Name: !Sub ${AWS::StackName}-UserPoolId
 
   UserPoolClientId:
     Description: Cognito User Pool Client ID
     Value: !Ref UserPoolClient
     Export:
-      Name: !Sub "${AWS::StackName}-UserPoolClientId"
+      Name: !Sub ${AWS::StackName}-UserPoolClientId

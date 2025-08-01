@@ -1,12 +1,12 @@
 # 📝 ToDo SAM App
 
-A fully serverless To-Do application built with AWS SAM, Cognito authentication, API Gateway, Lambda, and DynamoDB. Designed for recruiter-readiness, clarity, and production-grade infrastructure.
+A fully serverless To-Do application built with AWS SAM, Cognito authentication, API Gateway (HTTP API), Lambda, and DynamoDB. Designed for recruiter-readiness, clarity, and production-grade infrastructure.
 
 ---
 
 ## 🚀 Features
 
-- ✅ User signup and login via Cognito  
+- ✅ User signup, confirmation, forgot/reset password, and login via Cognito  
 - 🔐 Authenticated CRUD operations on tasks  
 - 🌐 RESTful API with CORS and JWT protection  
 - 🧱 Modular Lambda handlers using AWS SDK v3  
@@ -15,24 +15,74 @@ A fully serverless To-Do application built with AWS SAM, Cognito authentication,
 
 ---
 
-<details>
-<summary>🧱 Architecture Diagram (Click to expand)</summary>
+## 🧱 Architecture Diagram
 
 ```mermaid
-graph TD
-  A[Client App] --> B[API Gateway]
-  B --> C[Lambda Functions]
-  C --> D[DynamoDB]
-  B --> E[Cognito Authorizer]
-  E --> F[Cognito User Pool]
-```
+flowchart TD
+    subgraph Client
+        A[Frontend / Client App]
+    end
 
-</details>
+    subgraph API_Gateway
+        B[API Gateway (HTTP API)]
+    end
+
+    subgraph Cognito
+        F[Cognito User Pool]
+        G[Cognito User Pool Client]
+    end
+
+    subgraph Lambda_Auth
+        C1[Signup Lambda]
+        C2[Login Lambda]
+        C3[Confirm Signup Lambda]
+        C4[Forgot Password Lambda]
+        C5[Reset Password Lambda]
+    end
+
+    subgraph Lambda_Tasks
+        D1[Create Task Lambda]
+        D2[Get Tasks Lambda]
+        D3[Update Task Lambda]
+        D4[Delete Task Lambda]
+        D5[Complete Task Lambda]
+    end
+
+    subgraph DynamoDB
+        E[ToDoTasks Table]
+    end
+
+    A -->|HTTP Request| B
+    B -->|/auth/signup| C1
+    B -->|/auth/login| C2
+    B -->|/auth/confirm| C3
+    B -->|/auth/forgot| C4
+    B -->|/auth/reset| C5
+    B -->|/tasks*| D1
+    B -->|/tasks*| D2
+    B -->|/tasks*| D3
+    B -->|/tasks*| D4
+    B -->|/tasks*| D5
+
+    C1 -->|Cognito API| F
+    C2 -->|Cognito API| F
+    C3 -->|Cognito API| F
+    C4 -->|Cognito API| F
+    C5 -->|Cognito API| F
+
+    D1 -->|CRUD| E
+    D2 -->|CRUD| E
+    D3 -->|CRUD| E
+    D4 -->|CRUD| E
+    D5 -->|CRUD| E
+
+    B -->|JWT Auth| G
+    G --> F
+```
 
 ---
 
-<details>
-<summary>📦 Folder Structure</summary>
+## 📦 Folder Structure
 
 ```plaintext
 todo-sam-app/
@@ -47,15 +97,15 @@ todo-sam-app/
 │       ├── updateTask.js
 │       ├── completeTask.js
 │       ├── signup.js
-│       └── login.js
+│       ├── login.js
+│       ├── confirmSignup.js
+│       ├── forgotPassword.js
+│       └── resetPassword.js
 ```
-
-</details>
 
 ---
 
-<details>
-<summary>🛠️ Setup & Deployment</summary>
+## 🛠️ Setup & Deployment
 
 ### Prerequisites
 - AWS CLI configured  
@@ -74,48 +124,43 @@ sam build
 sam deploy --guided
 ```
 
-</details>
-
 ---
 
-<details>
-<summary>🔐 Authentication Flow</summary>
+## 🔐 Authentication Flow
 
 - **Signup**: `POST /auth/signup`  
+- **Confirm Signup**: `POST /auth/confirm`  
+- **Forgot Password**: `POST /auth/forgot`  
+- **Reset Password**: `POST /auth/reset`  
 - **Login**: `POST /auth/login`  
 - All `/tasks` routes require a valid JWT from Cognito  
 
-</details>
+---
+
+## 📤 API Endpoints
+
+| Method | Path                     | Auth Required | Description                  |
+|--------|--------------------------|---------------|------------------------------|
+| POST   | `/auth/signup`           | ❌            | Create new user              |
+| POST   | `/auth/confirm`          | ❌            | Confirm user signup          |
+| POST   | `/auth/forgot`           | ❌            | Request password reset (OTP) |
+| POST   | `/auth/reset`            | ❌            | Reset password with OTP      |
+| POST   | `/auth/login`            | ❌            | Authenticate user            |
+| GET    | `/tasks`                 | ✅            | Get all tasks                |
+| POST   | `/tasks`                 | ✅            | Create a task                |
+| PUT    | `/tasks/{taskId}`        | ✅            | Update a task                |
+| DELETE | `/tasks/{taskId}`        | ✅            | Delete a task                |
+| PATCH  | `/tasks/{taskId}/toggle` | ✅            | Toggle task completion       |
 
 ---
 
-<details>
-<summary>📤 API Endpoints</summary>
+## 📚 Notes
 
-| Method | Path                     | Auth Required | Description              |
-|--------|--------------------------|---------------|--------------------------|
-| POST   | `/auth/signup`           | ❌            | Create new user          |
-| POST   | `/auth/login`            | ❌            | Authenticate user        |
-| GET    | `/tasks`                 | ✅            | Get all tasks            |
-| POST   | `/tasks`                 | ✅            | Create a task            |
-| PUT    | `/tasks/{taskId}`        | ✅            | Update a task            |
-| DELETE | `/tasks/{taskId}`        | ✅            | Delete a task            |
-| PATCH  | `/tasks/{taskId}/toggle` | ✅            | Toggle task completion   |
-
-</details>
-
----
-
-<details>
-<summary>📚 Notes</summary>
-
-- All task routes are explicitly bound to `ServerlessRestApi` and protected by Cognito  
+- All task routes are explicitly bound to the HTTP API and protected by Cognito  
 - `DeletionPolicy: Retain` ensures safe teardown  
 - Uses AWS SDK v3 with modular imports for Lambda efficiency  
 - IAM policies follow least-privilege principles  
 - Local testing supported via `sam local invoke` and `sam local start-api`  
-
-</details>
 
 ---
 

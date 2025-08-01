@@ -23,7 +23,7 @@ export const handler = async (event) => {
     };
   }
 
-  const { email, password } = body;
+  const { fullName, email, password } = body;
 
   if (!email || !password) {
     logger.error("Missing email or password", { requestId });
@@ -37,6 +37,9 @@ export const handler = async (event) => {
     ClientId: process.env.USER_POOL_CLIENT_ID,
     Username: email,
     Password: password,
+    UserAttributes: [
+      { Name: "name", Value: fullName }
+    ]
   });
 
   try {
